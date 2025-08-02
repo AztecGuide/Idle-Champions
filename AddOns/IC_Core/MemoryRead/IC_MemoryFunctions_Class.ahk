@@ -66,7 +66,7 @@ class IC_MemoryFunctions_Class
     ;Updates installed after the date of this script may result in the pointer addresses no longer being accurate.
     GetVersion()
     {
-        return "v2.4.8, 2024-08-17"
+        return "v2.4.9, 2025-07-16"
     }
 
     GetPointersVersion()
@@ -763,43 +763,38 @@ class IC_MemoryFunctions_Class
 
     ReadHeroUpgradeRequiredLevel(champID := 1, upgradeID := 7)
     {
-        return this.GameManager.game.gameInstances[this.GameInstance].Controller.userData.HeroHandler.heroes[this.GetHeroHandlerIndexByChampID(ChampID)].allUpgrades["value", upgradeID].RequiredLevel.Read()
+        return this.GameManager.game.gameInstances[this.GameInstance].Controller.userData.HeroHandler.heroes[this.GetHeroHandlerIndexByChampID(ChampID)].upgradeHandler.upgradesByUpgradeId[upgradeID].RequiredLevel.Read()
     }
 
     ; Checks for specialization graphic. No graphic means no spec.
     ReadHeroUpgradeIsSpec(champID := 1, upgradeID := 7)
     {
-        return this.GameManager.game.gameInstances[this.GameInstance].Controller.userData.HeroHandler.heroes[this.GetHeroHandlerIndexByChampID(ChampID)].allUpgrades["value", upgradeID].defaultSpecGraphic.Read() > 0
+        return this.GameManager.game.gameInstances[this.GameInstance].Controller.userData.HeroHandler.heroes[this.GetHeroHandlerIndexByChampID(ChampID)].upgradeHandler.upgradesByUpgradeId[upgradeID].Def.defaultSpecGraphic.Read() > 0
     }
 
     ReadHeroUpgradeRequiredUpgradeID(champID := 1, upgradeID := 7)
     {
-        return this.GameManager.game.gameInstances[this.GameInstance].Controller.userData.HeroHandler.heroes[this.GetHeroHandlerIndexByChampID(ChampID)].allUpgrades["value", upgradeID].RequiredUpgradeID.Read()
+        return this.GameManager.game.gameInstances[this.GameInstance].Controller.userData.HeroHandler.heroes[this.GetHeroHandlerIndexByChampID(ChampID)].upgradeHandler.upgradesByUpgradeId[upgradeID].Def.RequiredUpgradeID.Read()
     }
 
     ReadHeroUpgradeID(champID := 1, upgradeID := 7)
     {
-        return this.GameManager.game.gameInstances[this.GameInstance].Controller.userData.HeroHandler.heroes[this.GetHeroHandlerIndexByChampID(ChampID)].allUpgrades["value", upgradeID].ID.Read()
+        return this.GameManager.game.gameInstances[this.GameInstance].Controller.userData.HeroHandler.heroes[this.GetHeroHandlerIndexByChampID(ChampID)].upgradeHandler.upgradesByUpgradeId[upgradeID].Id.Read()
     }
 
-    ReadHeroUpgradeSpecializationName(champID := 1, upgradeID := 8) ;upgradeID is "slot" ; battle master 
+    ReadHeroUpgradeSpecializationName(champID := 1, upgradeID := 7) ;upgradeID is "slot" ; battle master 
     {
-        return this.GameManager.game.gameInstances[this.GameInstance].Controller.userData.HeroHandler.heroes[this.GetHeroHandlerIndexByChampID(ChampID)].allUpgrades["value", upgradeID].SpecializationName.Read()
-    }
-
-    ReadHeroUpgradeSpecializationNameByID(champID := 1, upgradeID := 7) ; battle master 
-    {
-        return this.GameManager.game.gameInstances[this.GameInstance].Controller.userData.HeroHandler.heroes[this.GetHeroHandlerIndexByChampID(ChampID)].allUpgrades[upgradeID].SpecializationName.Read()
+        return this.GameManager.game.gameInstances[this.GameInstance].Controller.userData.HeroHandler.heroes[this.GetHeroHandlerIndexByChampID(ChampID)].upgradeHandler.upgradesByUpgradeId[upgradeID].Def.SpecializationName.Read()
     }
 
     ReadHeroUpgradeIsPurchased(champID := 1, upgradeID := 7)
     {
-        return this.GameManager.game.gameInstances[this.GameInstance].Controller.userData.HeroHandler.heroes[this.GetHeroHandlerIndexByChampID(ChampID)].allUpgrades[upgradeID].IsPurchased.Read()
+        return this.GameManager.game.gameInstances[this.GameInstance].Controller.userData.HeroHandler.heroes[this.GetHeroHandlerIndexByChampID(ChampID)].upgradeHandler.PurchasedUpgrades[upgradeID].Read() != ""
     }
 
     ReadHeroUpgradesSize(champID := 1)
     {
-        return this.GameManager.game.gameInstances[this.GameInstance].Controller.UserData.HeroHandler.heroes[this.GetHeroHandlerIndexByChampID(champID)].allUpgrades.size.Read()
+        return this.GameManager.game.gameInstances[this.GameInstance].Controller.UserData.HeroHandler.heroes[this.GetHeroHandlerIndexByChampID(champID)].upgradeHandler.upgradesByUpgradeId.size.Read()
     }
 
     ReadHeroIsOwned(champID := 1)
@@ -827,9 +822,9 @@ class IC_MemoryFunctions_Class
         return this.GameManager.game.gameInstances[this.GameInstance].Screen.uiController.bottomBar.heroPanel.activeBoxes[currIndex].nextUpgrade.IsPurchased.Read()
     }
 
-    ReadPurchasedUpgradeID(champID := 1, index := 0)
+        ReadPurchasedUpgradeID(champID := 1, index := 0) ; Deprecated 
     {
-        return this.GameManager.game.gameInstances[this.GameInstance].Controller.userData.HeroHandler.heroes[this.GetHeroHandlerIndexByChampID(champID)].purchasedUpgradeIDs[index].Read()
+        return this.GameManager.game.gameInstances[this.GameInstance].Controller.userData.HeroHandler.heroes[this.GetHeroHandlerIndexByChampID(champID)].upgradeHandler.PurchasedUpgrades.size.Read()
     }
 
     ;=========================
@@ -1221,6 +1216,45 @@ class IC_MemoryFunctions_Class
     {
         version := !_MemoryManager.is64Bit ? ( (g_ImportsGameVersion32 == "" ? " ---- " : (g_ImportsGameVersion32 . g_ImportsGameVersionPostFix32 )) . " (32 bit), " ) : ( (g_ImportsGameVersion64 == "" ? " ---- " : (g_ImportsGameVersion64 . g_ImportsGameVersionPostFix64)) . " (64 bit)")
         return version
+    }
+    
+    HeroHasFeatSavedInFormation(heroID, featID, formationSlot)
+    {
+        size := this.GameManager.game.gameInstances[this.GameInstance].FormationSaveHandler.formationSavesV2[formationSlot].Feats[heroID].List.size.Read()
+        if(size <= 0 OR size > 10) ; sanity check, should be < 6 but set to 10 in case of future game field familiar increase.
+            return false
+        Loop, %size%
+        {
+            value := this.GameManager.game.gameInstances[this.GameInstance].FormationSaveHandler.formationSavesV2[formationSlot].Feats[heroID].List[A_Index - 1].Read()
+            if (value==featID)
+                return true
+        }
+        return false
+    }
+    
+    HeroHasAnyFeatsSavedInFormation(heroID, formationSlot)
+    {
+        size := this.GameManager.game.gameInstances[this.GameInstance].FormationSaveHandler.formationSavesV2[formationSlot].Feats[heroID].List.size.Read()
+        if(size <= 0 OR size > 10) ; sanity check, should be < 6 but set to 10 in case of future game field familiar increase.
+            return false
+        return true
+    }
+
+    GetHeroFeats(heroID)
+    {
+        if (heroID < 1)
+            return ""
+        size := g_SF.Memory.GameManager.game.gameInstances[g_SF.Memory.GameInstance].Controller.userData.FeatHandler.heroFeatSlots[heroID].List.size.Read()
+        ; Sanity check, should be < 4 but set to 10 in case of future feat num increase.
+        if (size < 0 || size > 10)
+            return ""
+        featList := []
+        Loop, %size%
+        {
+            value := g_SF.Memory.GameManager.game.gameInstances[g_SF.Memory.GameInstance].Controller.userData.FeatHandler.heroFeatSlots[heroID].List[A_Index - 1].ID.Read()
+            featList.Push(value)
+        }
+        return featList
     }
 
     #include *i %A_LineFile%\..\IC_MemoryFunctions_Extended.ahk
